@@ -176,10 +176,10 @@ namespace LuaItem
     int HasQuest(lua_State* L, Item* item)
     {
         uint32 quest = Eluna::CHECKVAL<uint32>(L, 2);
-#ifndef TRINITY
-        Eluna::Push(L, item->HasQuest(quest));
-#else
+#if defined TRINITY || AZEROTHCORE
         Eluna::Push(L, item->hasQuest(quest));
+#else
+        Eluna::Push(L, item->HasQuest(quest));
 #endif
         return 1;
     }
@@ -195,7 +195,7 @@ namespace LuaItem
         return 1;
     }
 
-#ifndef CATA
+#if defined CLASSIC || defined(TBC) || defined(WOTLK)
     /**
      * Returns 'true' if the [Item] is a weapon vellum, 'false' otherwise
      *
@@ -271,7 +271,7 @@ namespace LuaItem
 #ifndef CLASSIC
         if (int32 itemRandPropId = item->GetItemRandomPropertyId())
         {
-#ifdef CATA
+#if defined(CATA) || defined (MISTS)
             char* suffix = NULL;
 #else
             char* const* suffix = NULL;
@@ -307,7 +307,11 @@ namespace LuaItem
             item->GetEnchantmentId(BONUS_ENCHANTMENT_SLOT) << ":" <<
 #endif
             item->GetItemRandomPropertyId() << ":" << item->GetItemSuffixFactor() << ":" <<
+#ifdef TRINITY
+            (uint32)item->GetOwner()->GetLevel() << "|h[" << name << "]|h|r";
+#else
             (uint32)item->GetOwner()->getLevel() << "|h[" << name << "]|h|r";
+#endif
 
         Eluna::Push(L, oss.str());
         return 1;
@@ -315,10 +319,10 @@ namespace LuaItem
 
     int GetOwnerGUID(lua_State* L, Item* item)
     {
-#ifndef TRINITY
-        Eluna::Push(L, item->GetOwnerGuid());
-#else
+#if defined TRINITY || AZEROTHCORE
         Eluna::Push(L, item->GetOwnerGUID());
+#else
+        Eluna::Push(L, item->GetOwnerGuid());
 #endif
         return 1;
     }
@@ -630,10 +634,10 @@ namespace LuaItem
     int SetOwner(lua_State* L, Item* item)
     {
         Player* player = Eluna::CHECKOBJ<Player>(L, 2);
-#ifndef TRINITY
-        item->SetOwnerGuid(player->GET_GUID());
-#else
+#if defined TRINITY || AZEROTHCORE
         item->SetOwnerGUID(player->GET_GUID());
+#else
+        item->SetOwnerGuid(player->GET_GUID());
 #endif
         return 0;
     }
@@ -736,11 +740,14 @@ namespace LuaItem
      */
     int SaveToDB(lua_State* /*L*/, Item* item)
     {
-#ifndef TRINITY
-        item->SaveToDB();
-#else
+#if defined TRINITY
+        CharacterDatabaseTransaction trans = CharacterDatabaseTransaction(nullptr);
+        item->SaveToDB(trans);
+#elif defined AZEROTHCORE
         SQLTransaction trans = SQLTransaction(NULL);
         item->SaveToDB(trans);
+#else
+        item->SaveToDB();
 #endif
         return 0;
     }

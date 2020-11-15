@@ -9,11 +9,11 @@
 
 #include "LuaEngine.h"
 
-#ifndef TRINITY
+#if defined TRINITY || AZEROTHCORE
+struct ScriptedAI;
+#else
 class AggressorAI;
 typedef AggressorAI ScriptedAI;
-#else
-struct ScriptedAI;
 #endif
 
 struct ElunaCreatureAI : ScriptedAI
@@ -22,7 +22,7 @@ struct ElunaCreatureAI : ScriptedAI
     bool justSpawned;
     // used to delay movementinform hook (WP hook)
     std::vector< std::pair<uint32, uint32> > movepoints;
-#ifndef TRINITY
+#if defined MANGOS || defined CMANGOS
 #define me  m_creature
 #endif
 
@@ -60,7 +60,7 @@ struct ElunaCreatureAI : ScriptedAI
 
         if (!sEluna->UpdateAI(me, diff))
         {
-#ifdef TRINITY
+#if defined TRINITY || AZEROTHCORE
             if (!me->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_NPC))
                 ScriptedAI::UpdateAI(diff);
 #else
@@ -70,6 +70,15 @@ struct ElunaCreatureAI : ScriptedAI
         }
     }
 
+#ifdef TRINITY
+    // Called for reaction when initially engaged - this will always happen _after_ JustEnteredCombat
+    // Called at creature aggro either by MoveInLOS or Attack Start
+    void JustEngagedWith(Unit* target) override
+    {
+        if (!sEluna->EnterCombat(me, target))
+            ScriptedAI::JustEngagedWith(target);
+    }
+#else
     //Called for reaction at enter to combat if not in combat yet (enemy can be NULL)
     //Called at creature aggro either by MoveInLOS or Attack Start
     void EnterCombat(Unit* target) override
@@ -77,12 +86,23 @@ struct ElunaCreatureAI : ScriptedAI
         if (!sEluna->EnterCombat(me, target))
             ScriptedAI::EnterCombat(target);
     }
+#endif
 
     // Called at any Damage from any attacker (before damage apply)
+#if AZEROTHCORE
+    void DamageTaken(Unit* attacker, uint32& damage, DamageEffectType damagetype, SpellSchoolMask damageSchoolMask) override
+#else
     void DamageTaken(Unit* attacker, uint32& damage) override
+#endif
     {
         if (!sEluna->DamageTaken(me, attacker, damage))
+        {
+#if AZEROTHCORE
+            ScriptedAI::DamageTaken(attacker, damage, damagetype, damageSchoolMask);
+#else
             ScriptedAI::DamageTaken(attacker, damage);
+#endif
+        }
     }
 
     //Called at creature death
@@ -181,7 +201,7 @@ struct ElunaCreatureAI : ScriptedAI
             ScriptedAI::CorpseRemoved(respawnDelay);
     }
 
-#ifndef TRINITY
+#if !defined TRINITY && !AZEROTHCORE
     // Enables use of MoveInLineOfSight
     bool IsVisible(Unit* who) const override
     {
@@ -209,14 +229,23 @@ struct ElunaCreatureAI : ScriptedAI
             ScriptedAI::SpellHitTarget(target, spell);
     }
 
-#ifdef TRINITY
+#if defined TRINITY || AZEROTHCORE
 
+#if defined TRINITY
+    // Called when the creature is summoned successfully by other creature
+    void IsSummonedBy(WorldObject* summoner) override
+    {
+        if (!summoner->ToUnit() || !sEluna->OnSummoned(me, summoner->ToUnit()))
+            ScriptedAI::IsSummonedBy(summoner);
+    }
+#else
     // Called when the creature is summoned successfully by other creature
     void IsSummonedBy(Unit* summoner) override
     {
         if (!sEluna->OnSummoned(me, summoner))
             ScriptedAI::IsSummonedBy(summoner);
     }
+#endif
 
     void SummonedCreatureDies(Creature* summon, Unit* killer) override
     {
@@ -239,7 +268,7 @@ struct ElunaCreatureAI : ScriptedAI
     }
 #endif
 
-#ifndef TRINITY
+#if defined MANGOS || defined CMANGOS
 #undef me
 #endif
 };
