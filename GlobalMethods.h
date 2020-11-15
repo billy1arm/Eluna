@@ -1594,7 +1594,11 @@ namespace LuaGlobalFunctions
                 pCreature->SetActiveObjectState(false);
 
                 // Also initializes the AI and MMGen
+#if defined(MANGOS) || defined(CMANGOS)
                 pCreature->Summon(durorresptime ? TEMPSPAWN_TIMED_OR_DEAD_DESPAWN : TEMPSPAWN_MANUAL_DESPAWN, durorresptime);
+#else
+                pCreature->Summon(durorresptime ? TEMPSUMMON_TIMED_OR_DEAD_DESPAWN : TEMPSUMMON_MANUAL_DESPAWN, durorresptime);
+#endif
 
                 // Creature Linking, Initial load is handled like respawn
                 if (pCreature->IsLinkingEventTrigger())
